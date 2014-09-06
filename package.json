@@ -1,0 +1,23 @@
+{
+  "name": "gc-crawler",
+  "version": "0.9.0",
+  "description": "Simple helper to bind crawl list api to list items",
+  "maintainers": [
+    {
+      "name": "David Dikman",
+      "web": "http://greycastle.se"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "web ": "http://github.com/greycastle/gc-crawler.git"
+  },
+  "dependencies": {
+    "request": "^2.42.0",
+    "scribe": "git+https://github.com/bluejamesbond/Scribe.js.git"
+  },
+  "devDependencies": {
+    "nock": "^0.46.0",
+    "nodeunit": "^0.9.0"
+  }
+}
