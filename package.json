@@ -1,6 +1,6 @@
 {
   "name": "gc-crawler",
-  "version": "0.9.2",
+  "version": "0.9.3",
   "description": "Simple helper to bind crawl list api to list items",
   "maintainers": [
     "David Dikman (http://greycastle.se)"
@@ -17,7 +17,7 @@
     "nock": "^0.46.0",
     "nodeunit": "^0.9.0"
   },
-  "main": "crawler.js",
+  "main": "gc-crawler.js",
   "scripts": {
     "test": "nodeunit test.all.js"
   },
