@@ -123,7 +123,7 @@ module.exports = {
                 this.withRequest(itemCrawlUrl, function(crawledItem){
 
                     try{
-                        items.push(module.exports.parseItem(itemCrawlUrl, crawledItem));
+                        items.push(module.exports.parseItem(itemUrl, crawledItem));
                     }
                     catch(e){
                         console.high("Failed to crawl item: " + formatErrorAndJson(e, crawledItem));
