@@ -1,6 +1,6 @@
 
 require("./logging");
-var crawler = require("./crawler");
+var crawler = require("./gc-crawler");
 
 exports.throwsIfNotSetup = function(test){
 
@@ -10,7 +10,7 @@ exports.throwsIfNotSetup = function(test){
 	    return responseObject.results.collection1;
 	};
 
-	crawler.parseItem = function(url, responseItem){
+	crawler.parseItem = function(url, responseItem){ 
 
 	    return responseItem.results.collection1;
 	};

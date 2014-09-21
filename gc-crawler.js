@@ -6,11 +6,11 @@ var logReq = function(method, url, text){
 };
 
 var logReqInfo = function(url, text){
-    logReq(console.info, url, text)
+    logReq(console.info, url, text);
 };
 
 var logReqErr = function(url, text){
-    logReq(console.high, url, text)
+    logReq(console.high, url, text);
 };
 
 var isRequestError = function(url, error, response, errorCallback){
@@ -27,6 +27,10 @@ var isRequestError = function(url, error, response, errorCallback){
 };
 
 var formatErrorAndJson = function(e, jsonStr){
+
+    if(typeof jsonStr === "object")
+        jsonStr = JSON.stringify(jsonStr, null, "  ");
+
     return e.message + "\r\n" + e.stack + "\r\n\r\nJson: " + jsonStr;
 };
 
@@ -62,7 +66,7 @@ module.exports = {
         this.validateCallbacks();
 
         this.withRequest(this.listApi, function(listObject){
-            runList(listObject, callback);
+            module.exports.runList(listObject, callback);
         });
     },
 
@@ -74,9 +78,10 @@ module.exports = {
 
         logReqInfo(url, "Retrieving data from " + url);
         request(url, function (error, response, body) {
-            
+        
+            args = args != null ? args : {};
             if(isRequestError(url, error, response, args.error))
-                return;
+                    return;
 
             var responseObject;
             try{
@@ -85,7 +90,7 @@ module.exports = {
                 logReqErr(url, "Failed to parse service object: " + formatErrorAndJson(e, body));
             }
 
-            logReqInfo("Successfully retrieved json object from service");
+            logReqInfo(url, "Successfully retrieved json object from service");
             
             try{
                 callback(responseObject);
@@ -115,12 +120,10 @@ module.exports = {
                 var itemUrl = this.getItemUrl(item);
                 var itemCrawlUrl = this.getCrawlUrl(item);
 
-                var parseMethod = this.parseItem;
-
                 this.withRequest(itemCrawlUrl, function(crawledItem){
 
                     try{
-                        items.push(parseMethod(crawledItem));
+                        items.push(module.exports.parseItem(itemCrawlUrl, crawledItem));
                     }
                     catch(e){
                         console.high("Failed to crawl item: " + formatErrorAndJson(e, crawledItem));

@@ -1,7 +1,7 @@
 
 require("./logging");
 var nock = require("nock");
-var crawler = require("./crawler");
+var crawler = require("./gc-crawler");
 
 exports.throwsIfNotSetup = function(test){
 
@@ -54,7 +54,7 @@ exports.waitsForItemsBeforeReturning = function(test){
 	crawler.getItemUrl = function(obj) { return "url"; };
 	crawler.getCrawlUrl = function(obj) { return "http://test.com/" + obj.val; };
 	
-	crawler.parseItem = function(obj) { 
+	crawler.parseItem = function(url, obj) { 
 		if(obj.val == "no")
 			throw new Error("this one fails");
 
