@@ -1,7 +1,7 @@
 
 require("./logging");
 var nock = require("nock");
-var crawler = require("./gc-crawler");
+var crawler = require("./gc-crawler").create();
 
 exports.throwsIfNotSetup = function(test){
 
@@ -70,6 +70,7 @@ exports.waitsForItemsBeforeReturning = function(test){
 	test.expect(2);
 	
 	crawler.runList(list, function(items){
+		console.log(JSON.stringify(items));
 		test.equal(1, items.length);
 		test.equal("yes", items[0].val);
 		test.done();

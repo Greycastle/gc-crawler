@@ -1,6 +1,6 @@
 
 require("./logging");
-var crawler = require("./gc-crawler");
+var crawler = require("./gc-crawler").create();
 
 exports.throwsIfNotSetup = function(test){
 

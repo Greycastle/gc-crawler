@@ -1,5 +1,5 @@
 
-var request = require("request");
+var request = require("request");  
 
 var logReq = function(method, url, text){
     method("#" + hashCode(url) + ": " + text);
@@ -42,104 +42,114 @@ var hashCode = function(str) {
             }, 0);
 };
 
-module.exports = {
+function Crawler() {
 
-    getListObject : null,
-    parseItem : null,
-    getItemUrl : null,
-    getCrawlUrl : null,
+    this.getListObject = null;
+    this.parseItem = null;
+    this.getItemUrl = null;
+    this.getCrawlUrl = null;
+    this.listApi = null;
+}; 
 
-    listApi : null,
+Crawler.prototype.validateCallbacks = function(){
+    if(this.getListObject == null) throw new Error("getListObject needs to be defined");
+    if(this.parseItem == null)     throw new Error("parseItem needs to be defined");
+    if(this.getItemUrl == null)    throw new Error("getItemUrl needs to be defined");
+    if(this.getCrawlUrl == null)   throw new Error("getCrawlUrl needs to be defined");
+};
 
-    validateCallbacks : function(){
-        if(this.getListObject == null) throw new Error("getListObject needs to be defined");
-        if(this.parseItem == null)     throw new Error("parseItem needs to be defined");
-        if(this.getItemUrl == null)    throw new Error("getItemUrl needs to be defined");
-        if(this.getCrawlUrl == null)   throw new Error("getCrawlUrl needs to be defined");
-    },
+Crawler.prototype.run = function(callback){
 
-    run : function(callback){
+    var crawler = this;
+    if(this.listApi == null)        
+        throw new Error("listApi needs to be defined");
 
-        if(this.listApi == null)        
-            throw new Error("listApi needs to be defined");
+    this.validateCallbacks();
 
-        this.validateCallbacks();
+    this.withRequest(this.listApi, (function(listObject){
+        this.runList(listObject, callback);
+    }).bind(this));
+},
 
-        this.withRequest(this.listApi, function(listObject){
-            module.exports.runList(listObject, callback);
-        });
-    },
+Crawler.prototype.withRequest = function(url, callback){
+    this.withRequest(url, callback, {});
+};
 
-    withRequest : function(url, callback){
-        this.withRequest(url, callback, {});
-    },
+Crawler.prototype.withRequest = function(url, callback, args){
 
-    withRequest : function(url, callback, args){
+    logReqInfo(url, "Retrieving data from " + url);
+    request(url, function (error, response, body) {
+    
+        args = args != null ? args : {};
+        if(isRequestError(url, error, response, args.error))
+                return;
 
-        logReqInfo(url, "Retrieving data from " + url);
-        request(url, function (error, response, body) {
+        var responseObject;
+        try{
+            responseObject = JSON.parse(body);
+        }catch(e){
+            logReqErr(url, "Failed to parse service object: " + formatErrorAndJson(e, body));
+        }
+
+        logReqInfo(url, "Successfully retrieved json object from service");
         
-            args = args != null ? args : {};
-            if(isRequestError(url, error, response, args.error))
-                    return;
+        try{
+            callback(responseObject);
+        }catch(e){
+            logReqErr(url, "Failed to process request: " + formatErrorAndJson(e, body));
+        }
+    });
+};
 
-            var responseObject;
+Crawler.prototype.runItem = function(item, callback){
+
+    try{
+        
+        var itemUrl = this.getItemUrl(item);
+        var itemCrawlUrl = this.getCrawlUrl(item);
+
+        this.withRequest(itemCrawlUrl, (function(crawledItem){
+
             try{
-                responseObject = JSON.parse(body);
-            }catch(e){
-                logReqErr(url, "Failed to parse service object: " + formatErrorAndJson(e, body));
+                callback(this.parseItem(itemUrl, crawledItem));
+            }
+            catch(e){
+                console.high("Failed to crawl item: " + formatErrorAndJson(e, crawledItem));
             }
 
-            logReqInfo(url, "Successfully retrieved json object from service");
-            
-            try{
-                callback(responseObject);
-            }catch(e){
-                logReqErr(url, "Failed to process request: " + formatErrorAndJson(e, body));
-            }
-        });
-    },
+            callback();
 
-    runList : function(listObject, callback){
+            }).bind(this), {
+                error: function(){ callback(); }
+            });
+
+    }catch(e){
+        console.high("Failed to crawl item: " + formatErrorAndJson(e, item));
+        callback();
+    }
+};
+
+Crawler.prototype.runList = function(listObject, callback){
         
         listObject = this.getListObject(listObject);
 
         var itemsToProcess = listObject.length;
         var items = [];
 
-        var itemProcessed = function(){
+        var itemProcessed = function(item){
             itemsToProcess -= 1;
+            if(item != null) items.push(item);
             if(itemsToProcess == 0)
                 callback(items);
         };
 
-        listObject.forEach(function(item){
+        listObject.forEach(function(item) { this.runItem(item, itemProcessed); }, this);
+};
 
-            try{
-                
-                var itemUrl = this.getItemUrl(item);
-                var itemCrawlUrl = this.getCrawlUrl(item);
+module.exports = {
 
-                this.withRequest(itemCrawlUrl, function(crawledItem){
-
-                    try{
-                        items.push(module.exports.parseItem(itemUrl, crawledItem));
-                    }
-                    catch(e){
-                        console.high("Failed to crawl item: " + formatErrorAndJson(e, crawledItem));
-                    }
-
-                    itemProcessed();
-
-                }, {
-                    error: function(){ itemProcessed(); }
-                });
-
-            }catch(e){
-                console.high("Failed to crawl item: " + formatErrorAndJson(e, item));
-                itemProcessed();
-            }
-        }, this);
+    create : function(){
+        return new Crawler();
     }
 
 };
