@@ -9,3 +9,5 @@ So the idea behind gc-crawler is that you've got one service, perhaps but not ne
 
 This is definately problematic if you would need to reference that crawled url somehow so I build this small library as a way to bridge between one API responding with a json object with urls to crawling each url encapsulating fetching, caching and error handling along the way.
 
+## EDIT 19/2 2015:
+I'm not sure how true the above is anymore since Kimonolabs have done a good job at pimping their built in functionality by now.
