@@ -1,6 +1,6 @@
 {
   "name": "gc-crawler",
-  "version": "0.9.5",
+  "version": "0.9.6",
   "description": "Simple helper to bind crawl list api to list items",
   "maintainers": [
     "David Dikman (http://greycastle.se)"
