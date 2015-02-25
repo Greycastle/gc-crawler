@@ -10,8 +10,9 @@
     "web ": "http://github.com/greycastle/gc-crawler.git"
   },
   "dependencies": {
-    "request": "^2.42.0",
-    "scribe": "git+https://github.com/bluejamesbond/Scribe.js.git"
+    "async": "^0.9.0",
+    "npmlog": "^1.1.0",
+    "request": "^2.42.0"
   },
   "devDependencies": {
     "nock": "^0.46.0",
@@ -19,7 +20,7 @@
   },
   "main": "gc-crawler.js",
   "scripts": {
-    "test": "nodeunit test.all.js"
+    "test": "nodeunit test/test.crawler.js"
   },
   "author": "David Dikman",
   "license": "ISC"

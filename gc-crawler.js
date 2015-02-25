@@ -1,155 +1,98 @@
-
 var request = require("request");  
+var async = require("async");
+var log = require("npmlog");
 
-var logReq = function(method, url, text){
-    method("#" + hashCode(url) + ": " + text);
+var crawler = {};
+
+var isUndefined = function(obj){
+    return obj == undefined || obj == null;
 };
 
-var logReqInfo = function(url, text){
-    logReq(console.info, url, text);
+var validateInputs = function(listUrl, parsers, callback){
+
+    if(isUndefined(listUrl) || typeof(listUrl) != 'string')
+        throw "Invalid parameter: listUrl {" + typeof(listUrl) + "} must be a String";
+
+    if(isUndefined(parsers) 
+        || typeof(parsers) != 'object'
+        || isUndefined(parsers.parseList)
+        || isUndefined(parsers.parseListItem))
+        throw "Invalid parameter: parsers { " + typeof(parsers) + " } must be object with signature { parseList: function(str), parseListItem: function(str) }";
+
+    if(isUndefined(callback) || typeof(callback) != 'function')
+        throw "Invalid parameter: callback {" + typeof(callback) + "} must be function(err, data)";
+
 };
 
-var logReqErr = function(url, text){
-    logReq(console.high, url, text);
-};
+/**
+ * Begins crawling a list url then sends the result to a first callback for 
+ * parsing. That callback should return a list of new urls which will be parsed
+ * in turn by second callback.
+ *
+ * @param {String} listUrl should be the url of the page containing a list of items to crawl
+ * @param {Object} parsers should be an object with two functions, parseList(string) and parseListItem(string)
+ * @param {Function} callback will be called upon completion, function(err, data)
+ *
+ * Example:
+ * crawler.crawl('http://listsite', {
+ *  parseList: function(listBody){
+ *      return parseList(listBody); // Returns array of urls
+ *  },
+ *  parseListItem: function(listItemBody){
+ *      return parseListItem(listItemBody); // Returns an item
+ *  }, function(err, data){
+ *       if(err)
+ *           handleError();
+ *       else
+ *           next();
+ *  });
+ */
+crawler.crawl = function(listUrl, parsers, callback){
 
-var isRequestError = function(url, error, response, errorCallback){
-    
-    if(error == null && response != null && response.statusCode == 200)
-        return false; 
+    var logTag = 'crawler.crawl';
 
-    logReqErr(url, "Erronous response from service <" + response.statusCode + ">: " + error);
+    validateInputs(listUrl, parsers, callback);
 
-    if(errorCallback != null)
-        errorCallback();
-
-    return true;
-};
-
-var formatErrorAndJson = function(e, jsonStr){
-
-    if(typeof jsonStr === "object")
-        jsonStr = JSON.stringify(jsonStr, null, "  ");
-
-    return e.message + "\r\n" + e.stack + "\r\n\r\nJson: " + jsonStr;
-};
-
-var hashCode = function(str) {
-    return str.split("").reduce(function(a,b)
-            {
-                a=((a<<5)-a)+b.charCodeAt(0);
-                return a;
-            }, 0);
-};
-
-function Crawler() {
-
-    this.getListObject = null;
-    this.parseItem = null;
-    this.getItemUrl = null;
-    this.getCrawlUrl = null;
-    this.listApi = null;
-}; 
-
-Crawler.prototype.validateCallbacks = function(){
-    if(this.getListObject == null) throw new Error("getListObject needs to be defined");
-    if(this.parseItem == null)     throw new Error("parseItem needs to be defined");
-    if(this.getItemUrl == null)    throw new Error("getItemUrl needs to be defined");
-    if(this.getCrawlUrl == null)   throw new Error("getCrawlUrl needs to be defined");
-};
-
-Crawler.prototype.run = function(callback){
-
-    var crawler = this;
-    if(this.listApi == null)        
-        throw new Error("listApi needs to be defined");
-
-    this.validateCallbacks();
-
-    this.withRequest(this.listApi, (function(listObject){
-        this.runList(listObject, callback);
-    }).bind(this));
-},
-
-Crawler.prototype.withRequest = function(url, callback){
-    this.withRequest(url, callback, {});
-};
-
-Crawler.prototype.withRequest = function(url, callback, args){
-
-    logReqInfo(url, "Retrieving data from " + url);
-    request(url, function (error, response, body) {
-    
-        args = args != null ? args : {};
-        if(isRequestError(url, error, response, args.error))
-                return;
-
-        var responseObject;
-        try{
-            responseObject = JSON.parse(body);
-        }catch(e){
-            logReqErr(url, "Failed to parse service object: " + formatErrorAndJson(e, body));
+    log.verbose(logTag, "Requesting %s", listUrl);
+    request(listUrl, function (error, response, body) {
+        if(error || isUndefined(body)) {
+            log.error(logTag, 'Failed to get %s: %j', listUrl, error);
+            callback(err, null);
+            return;
         }
 
-        logReqInfo(url, "Successfully retrieved json object from service");
-        
-        try{
-            callback(responseObject);
-        }catch(e){
-            logReqErr(url, "Failed to process request: " + formatErrorAndJson(e, body));
+        try {
+            var urls = parsers.parseList(body);
+            log.verbose(logTag, 'Parsed %s, $d results', listUrl, urls.length);
+
+            async.map(urls, function(url, whenParsed){
+
+                log.verbose(logTag, 'Requesting sub item: %s', url);
+                request(url, function(error, response, body){
+                    if(error || isUndefined(body)){
+                        log.error(logTag, 'Failed to get %s: %j', url, error);
+                        whenParsed(error, null);
+                        return;
+                    }
+
+                    try {
+                        whenParsed(null, parsers.parseListItem(body));
+                        log.verbose(logTag, 'Parsed %s', url);
+                    }catch(err) {
+                        log.error('Failed to parse %s: %j', url, err);
+                        whenParsed(err, null);
+                    }
+                });
+
+            }, callback);
         }
+        catch(exc) {
+            log.error('Failed to parse %s: %j', listUrl, exc);
+            callback(exc);
+        }
+
     });
-};
-
-Crawler.prototype.runItem = function(item, callback){
-
-    try{
-        
-        var itemUrl = this.getItemUrl(item);
-        var itemCrawlUrl = this.getCrawlUrl(item);
-
-        this.withRequest(itemCrawlUrl, (function(crawledItem){
-
-            try{
-                callback(this.parseItem(itemUrl, crawledItem));
-            }
-            catch(e){
-                console.high("Failed to crawl item: " + formatErrorAndJson(e, crawledItem));
-            }
-
-            callback();
-
-            }).bind(this), {
-                error: function(){ callback(); }
-            });
-
-    }catch(e){
-        console.high("Failed to crawl item: " + formatErrorAndJson(e, item));
-        callback();
-    }
-};
-
-Crawler.prototype.runList = function(listObject, callback){
-        
-        listObject = this.getListObject(listObject);
-
-        var itemsToProcess = listObject.length;
-        var items = [];
-
-        var itemProcessed = function(item){
-            itemsToProcess -= 1;
-            if(item != null) items.push(item);
-            if(itemsToProcess == 0)
-                callback(items);
-        };
-
-        listObject.forEach(function(item) { this.runItem(item, itemProcessed); }, this);
-};
-
-module.exports = {
-
-    create : function(){
-        return new Crawler();
-    }
 
 };
+
+module.exports = crawler;
