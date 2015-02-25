@@ -79,7 +79,7 @@ crawler.crawl = function(listUrl, parsers, callback){
                         whenParsed(null, parsers.parseListItem(body));
                         log.verbose(logTag, 'Parsed %s', url);
                     }catch(err) {
-                        log.error('Failed to parse %s: %j', url, err);
+                        log.error(logTag, 'Failed to parse %s: %j', url, err);
                         whenParsed(err, null);
                     }
                 });
@@ -87,7 +87,7 @@ crawler.crawl = function(listUrl, parsers, callback){
             }, callback);
         }
         catch(exc) {
-            log.error('Failed to parse %s: %j', listUrl, exc);
+            log.error(logTag, 'Failed to parse %s: %j', listUrl, exc);
             callback(exc);
         }
 

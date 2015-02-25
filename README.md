@@ -1,13 +1,35 @@
 gc-crawler
 ==========
 
-A simple crawl helper that will help connect an api with page links with the crawler of the actual pages, like for using with Kimono API
+A very simple crawl helper to make it simpler to go from one page of listed 
+items to parsing all child items.
 
-## The idea
+## Usage
 
-So the idea behind gc-crawler is that you've got one service, perhaps but not neccesarily, created using something like [Kimono API](http://kimonolabs.com). Problem is, Kimono's service allows you to crawl one page for urls and then use that list to crawl each page But it doesn't give you a way to retrieve the page url in the output api having all the pages.
+The library only helps to make it easier to parse sub items, the actual parsing 
+is up to you, here cheerio is used to for parsing.
 
-This is definately problematic if you would need to reference that crawled url somehow so I build this small library as a way to bridge between one API responding with a json object with urls to crawling each url encapsulating fetching, caching and error handling along the way.
+```javascript
+var cheerio = require("cheerio");
+var crawler = require("gc-crawler");
 
-## EDIT 19/2 2015:
-I'm not sure how true the above is anymore since Kimonolabs have done a good job at pimping their built in functionality by now.
+// Specify url to crawl
+crawler.crawl('https://www.npmjs.com/', {
+	// Callback to parse the list page html body into links
+	parseList: function(body){
+		var $ = cheerio.load(body);
+		var packages = $('a.package-logo').map(function(i, el){
+			return "https://www.npmjs.com" + $(el).attr('href');
+		}).get();
+		return packages;
+	},
+	// Callback to parse each item body into an object
+	parseListItem: function(body){
+		var $ = cheerio.load(body);
+		return $('h1.package-name').text();
+	}
+}, function(err, data){
+
+	// Will recieve an array with a string for each page containing the package title
+
+});
